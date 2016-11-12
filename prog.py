@@ -90,9 +90,11 @@ def normValue(docnumber):
 	for i in range(fr,to):
 		nval = nval + val[i]**2
 	nval = math.sqrt(nval)
-	normValues[docnumber] = nval
-	return nval
-
+	print(nval)
+	ntval = "%.5f" % nval
+	normValues[docnumber] = float(ntval)
+	print(float(ntval))
+	return float(ntval)
 def normVector(docnumber):
 	global normVectors
 	if docnumber in normVectors:
@@ -242,10 +244,10 @@ def runner():
 			# if y > 1.0:
 			# 	print ("i: " + str(i) + " j: " + str(j))
 	#knnIdx()
-	knn(0.8,5)
+	#knn(0.8,5)
 	#print (normValue(3))
 	#print("norvalue 3:" + str(normValues[3]))
-	#print(cosineSimNorm(258,259))
+	print(cosineSimNorm(258,259))
 
 runner()
 

@@ -344,7 +344,7 @@ func main() {
 	// 	}
 	// }
 	//knnIdx()
-	knnAll(0.8,5)
+	knnAll(0.8,10)
 	//fmt.Println(len(nbrs))
 	//fmt.Println(cosims)
 	//fmt.Println(cosineSimDot(258,259))
