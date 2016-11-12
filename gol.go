@@ -23,8 +23,8 @@ type DocPair struct {
  */
 
 type sortedMap struct {
-	m map[DocPair]float64
-	s []DocPair
+	m map[int]float64
+	s []int
 }
 
 func (sm *sortedMap) Len() int {
@@ -39,10 +39,10 @@ func (sm *sortedMap) Swap(i, j int) {
 	sm.s[i], sm.s[j] = sm.s[j], sm.s[i]
 }
 
-func sortedKeys(m map[DocPair]float64) []DocPair {
+func sortedKeys(m map[int]float64) []int {
 	sm := new(sortedMap)
 	sm.m = m
-	sm.s = make([]DocPair, len(m))
+	sm.s = make([]int, len(m))
 	i := 0
 	for key, _ := range m {
 		sm.s[i] = key
@@ -140,14 +140,14 @@ func cosineSimDot(docNum1 int, docNum2 int) float64 {
 		return 1.0
 	}
 	// caching of cosine similarities -> (disabled since no signficant performance gain)
-	/*docPair := DocPair{doc1: docNum1, doc2: docNum2}
+	docPair := DocPair{doc1: docNum1, doc2: docNum2}
 	if v, ok := cosims[docPair]; ok {
 		return v
 	}
 	docPairInv := DocPair{doc1: docNum2, doc2: docNum1}
 	if v, ok := cosims[docPairInv]; ok {
 		return v
-	}*/
+	}
 
 	fr1 := ptr[docNum1-1]
 	to1 := ptr[docNum1]
@@ -184,8 +184,8 @@ func cosineSimDot(docNum1 int, docNum2 int) float64 {
 		simi = dp / math.Sqrt(normDoc1*normDoc2)
 	}
 	/*cosims[docPair] = simi*/
-	// docPair = DocPair{doc1: docNum2, doc2:docNum1}
-	// cosims[docPair] = simi
+	docPair = DocPair{doc1: docNum2, doc2:docNum1}
+	cosims[docPair] = simi
 	return simi
 }
 
@@ -286,32 +286,43 @@ func knnIdx() {
 		nbrslist = append(nbrslist, k)
 	}
 	println("Neighbours created")
+	l := len(nbrslist)
+	println("Number of probable neighbours: ", l)
 }
 
 /* Finds similarity within probable neighbours */
-func knn(eps float64, k int) {
-	klist := make(map[DocPair]float64)
+func knn(docnum int, eps float64, k int) {
+	klist := make(map[int]float64)
 	//fmt.Println("nbrslist: ", nbrslist)
 	l := len(nbrslist)
-	println("Number of probable neighbours: ", l)
+	//println("Number of probable neighbours: ", l)
 	for i := 0; i < l; i++ {
-		for j := i + 1; j < l; j++ {
-			simi := cosineSimDot(nbrslist[i], nbrslist[j])
+		if nbrslist[i] != docnum {
+			simi := cosineSimDot(docnum, nbrslist[i])
 			if simi >= eps {
-				docPair := DocPair{doc1: nbrslist[i], doc2: nbrslist[j]}
-				klist[docPair] = simi
+				// docPair := DocPair{doc1: nbrslist[i], doc2: nbrslist[j]}
+				klist[nbrslist[i]] = simi
 			}
 		}
 	}
-	println("Number of computed similarities: ", numCosineSim)
+	//println("Number of computed similarities: ", numCosineSim)
 	if len(klist) < k {
 		k = len(klist)
 	}
-	fmt.Println("klist: ", sortedKeys(klist)[:k])
+	sklist := sortedKeys(klist)
+	print(docnum, ": ")
+	for i:=0; i<k; i++ {
+		fmt.Print(sklist[i], " ", klist[sklist[i]], " ")
+	}
+	println()
+	//fmt.Println("klist: ", sortedKeys(klist)[:k])
 }
 
-func knnAll() {
+func knnAll(eps float64, k int) {
 	knnIdx()
+	for i:=1; i<records+1; i++ {
+		knn(i,eps,k)
+	}
 }
 
 func main() {
@@ -321,11 +332,11 @@ func main() {
 	println("********************************************************************************")
 	tStart := time.Now()
 	//printFileStats("wiki10.csr")
-	readCreateCSR("wiki10.csr")
-	knnIdx()
-	//cosims = make(map[DocPair]float64)
-	//normValues = make(map[int]float64)
-	//normVectors = make(map[int]map[int]float64)
+	readCreateCSR("wiki1k.csr")
+	//knnIdx()
+	cosims = make(map[DocPair]float64)
+	normValues = make(map[int]float64)
+	normVectors = make(map[int]map[int]float64)
 	// for i := 1; i <= records; i++ {
 	// 	println(i)
 	// 	for j := i; j <= records; j++ {
@@ -333,7 +344,7 @@ func main() {
 	// 	}
 	// }
 	//knnIdx()
-	knn(0.4, 10)
+	knnAll(0.8,5)
 	//fmt.Println(len(nbrs))
 	//fmt.Println(cosims)
 	//fmt.Println(cosineSimDot(258,259))

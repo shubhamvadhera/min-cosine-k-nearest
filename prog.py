@@ -242,7 +242,7 @@ def runner():
 			# if y > 1.0:
 			# 	print ("i: " + str(i) + " j: " + str(j))
 	#knnIdx()
-	knn(0.9,10)
+	knn(0.8,5)
 	#print (normValue(3))
 	#print("norvalue 3:" + str(normValues[3]))
 	#print(cosineSimNorm(258,259))
