@@ -10,6 +10,9 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"os"
+
+	"github.com/shopspring/decimal"
 )
 
 /* Tuple for document number pairs */
@@ -131,6 +134,13 @@ func readCreateCSR(filename string) {
 	}
 }
 
+func truncate(f float64) float64 {
+	f_d := decimal.NewFromFloat(f)
+	f_t := f_d.Truncate(5)
+	f_r,_ := f_t.Float64()
+	return f_r
+}
+
 /* Calculates Cosine Similarity by dot product
 * algorithm adopted from findsim by Prof. David C. Anastasiu
  */
@@ -139,7 +149,7 @@ func cosineSimDot(docNum1 int, docNum2 int) float64 {
 	if docNum1 == docNum2 {
 		return 1.0
 	}
-	// caching of cosine similarities -> (disabled since no signficant performance gain)
+	// caching of cosine similarities
 	docPair := DocPair{doc1: docNum1, doc2: docNum2}
 	if v, ok := cosims[docPair]; ok {
 		return v
@@ -161,21 +171,21 @@ func cosineSimDot(docNum1 int, docNum2 int) float64 {
 	simi := 0.0
 	for i < to1 && j < to2 {
 		if i == to1 { //i reaches end
-			normDoc2 = normDoc2 + float64(val[j]*val[j])
+			normDoc2 += float64(val[j]*val[j])
 			j += 1
 		} else if j == to2 { // j reaches end
-			normDoc1 = normDoc1 + float64(val[i]*val[i])
+			normDoc1 += float64(val[i]*val[i])
 			i += 1
 		} else if ind[i] > ind[j] {
-			normDoc2 = normDoc2 + float64(val[j]*val[j])
+			normDoc2 += float64(val[j]*val[j])
 			j += 1
 		} else if ind[i] < ind[j] {
-			normDoc1 = normDoc1 + float64(val[i]*val[i])
+			normDoc1 += float64(val[i]*val[i])
 			i += 1
 		} else {
-			dp = dp + float64(val[i]*val[j])
-			normDoc1 = normDoc1 + float64(val[i]*val[i])
-			normDoc2 = normDoc2 + float64(val[j]*val[j])
+			dp += float64(val[i]*val[j])
+			normDoc1 += float64(val[i]*val[i])
+			normDoc2 += float64(val[j]*val[j])
 			i += 1
 			j += 1
 		}
@@ -198,9 +208,9 @@ func normValue(docnumber int) float64 {
 	to := ptr[docnumber]
 	nval := 0.0
 	for i := fr; i < to; i++ {
-		nval += float64(val[i] * val[i])
+		nval += truncate(float64(val[i] * val[i]))
 	}
-	nval = math.Sqrt(nval)
+	nval = truncate(math.Sqrt(nval))
 	normValues[docnumber] = nval
 	return nval
 }
@@ -214,7 +224,7 @@ func normVector(docnumber int) map[int]float64 {
 	to := ptr[docnumber]
 	dic := make(map[int]float64)
 	for i := fr; i < to; i++ {
-		dic[ind[i]] = float64(val[i]) / normValue(docnumber)
+		dic[ind[i]] = truncate(float64(val[i]) / normValue(docnumber))
 	}
 	normVectors[docnumber] = dic
 	return dic
@@ -242,7 +252,7 @@ func cosineSimNorm(docNum1 int, docNum2 int) float64 {
 	simi := 0.0
 	for k, _ := range doc1norm {
 		if _, ok := doc2norm[k]; ok {
-			simi += doc1norm[k] * doc2norm[k]
+			simi += truncate(doc1norm[k] * doc2norm[k])
 		}
 	}
 	cosims[docPair] = simi
@@ -337,18 +347,18 @@ func main() {
 	cosims = make(map[DocPair]float64)
 	normValues = make(map[int]float64)
 	normVectors = make(map[int]map[int]float64)
-	// for i := 1; i <= records; i++ {
-	// 	println(i)
-	// 	for j := i; j <= records; j++ {
-	// 		cosineSimDot(i, j)
-	// 	}
-	// }
+	for i := 1; i <= records; i++ {
+		println(i)
+		for j := i; j <= records; j++ {
+			cosineSimDot(i, j)
+		}
+	}
 	//knnIdx()
-	knnAll(0.8,10)
+	//knnAll(0.8,10)
 	//fmt.Println(len(nbrs))
 	//fmt.Println(cosims)
 	//fmt.Println(cosineSimDot(258,259))
-	//fmt.Println(cosineSimNorm(1,2))
+	//fmt.Println(cosineSimDot(258,259))
 	// fmt.Println(normValue(3))
 	// fmt.Println(normValue(3))
 	// fmt.Println(normVector(1))
