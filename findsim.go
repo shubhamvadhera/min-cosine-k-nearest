@@ -10,7 +10,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
-	"os"
+	"flag"
 
 	"github.com/shopspring/decimal"
 )
@@ -62,11 +62,13 @@ var records int
 var ptr []int
 var ind []int
 var val []int
+var numOfNbrs int
 var numCosineSim int
 var cosims map[DocPair]float64
 var normValues map[int]float64
 var normVectors map[int]map[int]float64
 var nbrslist []int
+var outputArr []string
 
 /* Function to print file statistics like number of rows */
 func printFileStats(filename string) {
@@ -105,13 +107,14 @@ func readCreateCSR(filename string) {
 	if file, err := os.Open(filename); err == nil {
 		defer file.Close()
 		scanner := bufio.NewScanner(file)
+		nnz := 0
 		ptr = append(ptr, 0)
 		for scanner.Scan() {
 			records += 1
 			arr := strings.Split(strings.Trim(scanner.Text(), " "), " ")
 			//fmt.Println(arr)
 			l := len(arr)
-			//println(l/2)
+			nnz+=l
 			ptr = append(ptr, ptr[len(ptr)-1]+l/2)
 			for i := 0; i < l; i++ {
 				x, _ := strconv.Atoi(arr[i])
@@ -125,13 +128,14 @@ func readCreateCSR(filename string) {
 		//fmt.Println(ptr)
 		//fmt.Println(ind)
 		//fmt.Println(val)
-		fmt.Println("Number of records: ", records)
+		fmt.Println("Docs matrix: ", records, "rows,", nnz/2, "nnz")
 		if err = scanner.Err(); err != nil {
 			log.Fatal(err)
 		}
 	} else {
 		log.Fatal(err)
 	}
+	println("    Scaling input matrix.")
 }
 
 func truncate(f float64) float64 {
@@ -145,7 +149,6 @@ func truncate(f float64) float64 {
 * algorithm adopted from findsim by Prof. David C. Anastasiu
  */
 func cosineSimDot(docNum1 int, docNum2 int) float64 {
-	numCosineSim += 1
 	if docNum1 == docNum2 {
 		return 1.0
 	}
@@ -158,6 +161,8 @@ func cosineSimDot(docNum1 int, docNum2 int) float64 {
 	if v, ok := cosims[docPairInv]; ok {
 		return v
 	}
+
+	numCosineSim += 1
 
 	fr1 := ptr[docNum1-1]
 	to1 := ptr[docNum1]
@@ -233,7 +238,7 @@ func normVector(docnumber int) map[int]float64 {
 
 /* Calculates Cosine Similarity by normalized vectors
 * slower than cosineSimDot in Golang
- */
+*/
 func cosineSimNorm(docNum1 int, docNum2 int) float64 {
 	numCosineSim += 1
 	if docNum1 == docNum2 {
@@ -295,9 +300,7 @@ func knnIdx() {
 	for k := range nbrs {
 		nbrslist = append(nbrslist, k)
 	}
-	println("Neighbours created")
-	l := len(nbrslist)
-	println("Number of probable neighbours: ", l)
+	print("Progress Indicator: ")
 }
 
 /* Finds similarity within probable neighbours */
@@ -320,41 +323,81 @@ func knn(docnum int, eps float64, k int) {
 		k = len(klist)
 	}
 	sklist := sortedKeys(klist)
-	print(docnum, ": ")
+	//print(docnum, ": ")
 	for i:=0; i<k; i++ {
-		fmt.Print(sklist[i], " ", klist[sklist[i]], " ")
+		str := " " + strconv.Itoa(sklist[i]) + " " + strconv.FormatFloat(klist[sklist[i]], 'f', 6, 64)
+		outputArr[docnum-1] += str
+		numOfNbrs+=1
+		//fmt.Print(sklist[i], " ", klist[sklist[i]], " ")
 	}
-	println()
+	//println()
 	//fmt.Println("klist: ", sortedKeys(klist)[:k])
 }
 
-func knnAll(eps float64, k int) {
+func knnAll(eps float64, k int, oFile string) {
 	knnIdx()
+	outputArr = make([]string, records)
+	var progress int
+	progress = records/10
 	for i:=1; i<records+1; i++ {
 		knn(i,eps,k)
+		if (i == progress) {
+				//fmt.Print(float64((progress)/records)*100)
+				fmt.Print(float64(progress)/float64(records)*100, "%..")
+				progress += records/10
+		}
 	}
+	println()
+	println("Number of computed similarities: ", numCosineSim)
+	println("Number of neighbors: ", numOfNbrs)
+	file, err := os.Create(oFile)
+  if err != nil {
+    panic(err)
+  }
+  defer file.Close()
+
+  w := bufio.NewWriter(file)
+  for _, line := range outputArr {
+    fmt.Fprintln(w, line)
+  }
+  w.Flush()
+	fmt.Println("Wrote output to ", oFile)
 }
 
 func main() {
 	println("********************************************************************************")
 	println("findsim-golang (0.0.1), vInfo: [initial version]")
-	println("mode: ij, iFile: , oFile: , k: , eps: ")
+	epsPtr := flag.String("eps", "0.5", "Epsilon value")
+	kPtr := flag.String("k", "10", "k value")
+	flag.Parse()
+	eps,err := strconv.ParseFloat(*epsPtr,64)
+	if err != nil || eps > 1.0 || eps < 0.0 {
+		println("Invalid eps value. Must be between 0.0 and 1.0 inclusive.")
+		panic(err)
+	}
+	k,err := strconv.Atoi(*kPtr)
+	if err != nil || k < 1 {
+		println("Invalid k value. Must be greater than 0")
+		panic(err)
+	}
+	iFile := os.Args[len(os.Args)-2]
+	oFile := os.Args[len(os.Args)-1]
+	println("mode: custom, iFile:",iFile,", oFile:",oFile, ", k:",*kPtr, ", eps:",*epsPtr)
 	println("********************************************************************************")
 	tStart := time.Now()
-	//printFileStats("wiki10.csr")
-	readCreateCSR("wiki1k.csr")
-	//knnIdx()
+	//printFileStats(iFile)
+	readCreateCSR(iFile)
 	cosims = make(map[DocPair]float64)
 	normValues = make(map[int]float64)
 	normVectors = make(map[int]map[int]float64)
-	for i := 1; i <= records; i++ {
-		println(i)
-		for j := i; j <= records; j++ {
-			cosineSimDot(i, j)
-		}
-	}
+	// for i := 1; i <= records; i++ {
+	// 	//println(i)
+	// 	for j := i; j <= records; j++ {
+	// 		cosineSimDot(i, j)
+	// 	}
+	// }
 	//knnIdx()
-	//knnAll(0.8,10)
+	knnAll(eps,k,oFile)
 	//fmt.Println(len(nbrs))
 	//fmt.Println(cosims)
 	//fmt.Println(cosineSimDot(258,259))
@@ -363,6 +406,6 @@ func main() {
 	// fmt.Println(normValue(3))
 	// fmt.Println(normVector(1))
 	// fmt.Println(normVector(1))
-
-	fmt.Println("Program time: ", time.Since(tStart))
+	fmt.Println("TIMES:")
+	fmt.Println("          Total time: ", time.Since(tStart))
 }
