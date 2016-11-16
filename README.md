@@ -33,3 +33,6 @@ Default value is 10.
 -eps=float
 Minimum similarity for neighbors.
 Default value is 0.5. Must be non-negative.
+
+####Credits:
+Inspired heavily by Prof. David C. Anastasiu
