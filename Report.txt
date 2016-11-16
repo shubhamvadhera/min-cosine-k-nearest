@@ -1,8 +1,0 @@
-I have implemented this program from scratch and not used any of the baseline codes.
-I started with Python and the first step was to be able to read the file into ptr, ind and val arrays. After this was achieved, the next step was to read these arrays and try to compute the cosine similarity. I tried both the methods of cosine similarity (by normalized vectors, as well as, by dot product). In python, the normalized vectors method was significantly faster than the dot product method. I incorporated caching of the calculated norm vectors, which further improved performance.
-
-The next step was to implement the IdxJoin algorithm to find k nearest neighbours. When the code was completed, the Python program became too slow by this point. It was not even runnable for the wiki1.csr file.
-
-So, I started exploring other languages. I did not opt for C or C++ because I wanted to implement everything from scratch and not use any baseline code, but writing code in C or C++ was too complex. I decided to try Golang, which has very good reviews.
-
-I implemented the same program in Golang. Golang was about 10 times faster than Python, but still about 3 times slower than C. But coding in Golang was as easy as coding in Python, since it has all the advanced features built in such as map, slices.

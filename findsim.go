@@ -125,9 +125,6 @@ func readCreateCSR(filename string) {
 				}
 			}
 		}
-		//fmt.Println(ptr)
-		//fmt.Println(ind)
-		//fmt.Println(val)
 		fmt.Println("Docs matrix: ", records, "rows,", nnz/2, "nnz")
 		if err = scanner.Err(); err != nil {
 			log.Fatal(err)
@@ -198,7 +195,6 @@ func cosineSimDot(docNum1 int, docNum2 int) float64 {
 	if dp > 0.0 {
 		simi = dp / math.Sqrt(normDoc1*normDoc2)
 	}
-	/*cosims[docPair] = simi*/
 	docPair = DocPair{doc1: docNum2, doc2:docNum1}
 	cosims[docPair] = simi
 	return simi
@@ -306,32 +302,24 @@ func knnIdx() {
 /* Finds similarity within probable neighbours */
 func knn(docnum int, eps float64, k int) {
 	klist := make(map[int]float64)
-	//fmt.Println("nbrslist: ", nbrslist)
 	l := len(nbrslist)
-	//println("Number of probable neighbours: ", l)
 	for i := 0; i < l; i++ {
 		if nbrslist[i] != docnum {
 			simi := cosineSimDot(docnum, nbrslist[i])
 			if simi >= eps {
-				// docPair := DocPair{doc1: nbrslist[i], doc2: nbrslist[j]}
 				klist[nbrslist[i]] = simi
 			}
 		}
 	}
-	//println("Number of computed similarities: ", numCosineSim)
 	if len(klist) < k {
 		k = len(klist)
 	}
 	sklist := sortedKeys(klist)
-	//print(docnum, ": ")
 	for i:=0; i<k; i++ {
 		str := " " + strconv.Itoa(sklist[i]) + " " + strconv.FormatFloat(klist[sklist[i]], 'f', 6, 64)
 		outputArr[docnum-1] += str
 		numOfNbrs+=1
-		//fmt.Print(sklist[i], " ", klist[sklist[i]], " ")
 	}
-	//println()
-	//fmt.Println("klist: ", sortedKeys(klist)[:k])
 }
 
 func knnAll(eps float64, k int, oFile string) {
@@ -342,7 +330,6 @@ func knnAll(eps float64, k int, oFile string) {
 	for i:=1; i<records+1; i++ {
 		knn(i,eps,k)
 		if (i == progress) {
-				//fmt.Print(float64((progress)/records)*100)
 				fmt.Print(float64(progress)/float64(records)*100, "%..")
 				progress += records/10
 		}
@@ -385,27 +372,11 @@ func main() {
 	println("mode: custom, iFile:",iFile,", oFile:",oFile, ", k:",*kPtr, ", eps:",*epsPtr)
 	println("********************************************************************************")
 	tStart := time.Now()
-	//printFileStats(iFile)
 	readCreateCSR(iFile)
 	cosims = make(map[DocPair]float64)
 	normValues = make(map[int]float64)
 	normVectors = make(map[int]map[int]float64)
-	// for i := 1; i <= records; i++ {
-	// 	//println(i)
-	// 	for j := i; j <= records; j++ {
-	// 		cosineSimDot(i, j)
-	// 	}
-	// }
-	//knnIdx()
 	knnAll(eps,k,oFile)
-	//fmt.Println(len(nbrs))
-	//fmt.Println(cosims)
-	//fmt.Println(cosineSimDot(258,259))
-	//fmt.Println(cosineSimDot(258,259))
-	// fmt.Println(normValue(3))
-	// fmt.Println(normValue(3))
-	// fmt.Println(normVector(1))
-	// fmt.Println(normVector(1))
 	fmt.Println("TIMES:")
 	fmt.Println("          Total time: ", time.Since(tStart))
 }
